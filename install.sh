@@ -15,17 +15,20 @@ error() { printf "\033[31;1m[ERROR]\033[0m %s\n" "$1"; exit 1; }
 install_dependencies() {
     info "Installing system dependencies..."
     sudo apt-get update
-    sudo apt-get install -y \
-        curl \
-        git \
-        build-essential \
-        unzip \
-        ripgrep \
-        fd-find \
-        python3 \
-        python3-venv \
-        npm \
-        wget
+    
+    local pkgs=("curl" "git" "build-essential" "unzip" "ripgrep" "fd-find" "python3" "python3-venv" "wget")
+    
+    # Only add npm if not already installed
+    if ! command -v npm >/dev/null; then
+        pkgs+=("npm")
+    fi
+
+    sudo apt-get install -y "${pkgs[@]}"
+
+    # Symlink fdfind to fd if it's the debian package version
+    if command -v fdfind >/dev/null && ! command -v fd >/dev/null; then
+        sudo ln -sf /usr/bin/fdfind /usr/local/bin/fd
+    fi
 }
 
 # --- Neovim Installation ---

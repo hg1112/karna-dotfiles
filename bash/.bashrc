@@ -3,7 +3,7 @@ export TERM=wezterm
 [[ $- != *i* ]] && return
 
 # Path to your oh-my-bash installation.
-export OSH='/home/karna/.oh-my-bash'
+export OSH="$HOME/.oh-my-bash"
 OSH_THEME="rana"
 OMB_USE_SUDO=true
 OMB_PROMPT_SHOW_PYTHON_VENV=true
@@ -25,8 +25,8 @@ export PATH="$PATH:$HOME/.local/bin"
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 # mise (conditional activation)
-if [ -x "/home/karna/.local/bin/mise" ]; then
-  eval "$(/home/karna/.local/bin/mise activate bash)"
+if [ -x "$HOME/.local/bin/mise" ]; then
+  eval "$($HOME/.local/bin/mise activate bash)"
 fi
 
 # ── Conda / Miniconda ─────────────────────────────────────────────────────────
