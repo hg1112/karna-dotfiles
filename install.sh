@@ -11,16 +11,44 @@ info() { printf "\033[34;1m[INFO]\033[0m %s\n" "$1"; }
 warn() { printf "\033[33;1m[WARN]\033[0m %s\n" "$1"; }
 error() { printf "\033[31;1m[ERROR]\033[0m %s\n" "$1"; exit 1; }
 
-# --- System Dependencies (Debian) ---
+# --- Detect OS & architecture ---
+detect_env() {
+    ARCH="$(uname -m)"
+    OS_ID=""
+    OS_ID_LIKE=""
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS_ID="${ID:-}"
+        OS_ID_LIKE="${ID_LIKE:-}"
+    fi
+    IS_POPOS=false
+    [[ "$OS_ID" == "pop" ]] && IS_POPOS=true
+    HAS_NVIDIA=false
+    command -v nvidia-smi >/dev/null 2>&1 && HAS_NVIDIA=true
+    info "Detected: OS=${OS_ID} ARCH=${ARCH} PopOS=${IS_POPOS} NVIDIA=${HAS_NVIDIA}"
+}
+
+# --- System Dependencies ---
 install_dependencies() {
     info "Installing system dependencies..."
     sudo apt-get update
-    
-    local pkgs=("curl" "git" "build-essential" "unzip" "ripgrep" "fd-find" "python3" "python3-venv" "wget")
-    
+
+    local pkgs=(
+        "curl" "git" "build-essential" "unzip"
+        "ripgrep" "fd-find"
+        "python3" "python3-venv" "python3-dev" "python3-pip"
+        "wget" "ca-certificates"
+    )
+
     # Only add npm if not already installed
     if ! command -v npm >/dev/null; then
         pkgs+=("npm")
+    fi
+
+    # PopOS / NVIDIA extras
+    if $IS_POPOS; then
+        info "PopOS detected — adding GPU monitoring tools..."
+        pkgs+=("nvtop")
     fi
 
     sudo apt-get install -y "${pkgs[@]}"
@@ -33,19 +61,34 @@ install_dependencies() {
 
 # --- Neovim Installation ---
 install_neovim() {
-    if command -v nvim >/dev/null && [[ "$(nvim --version | head -n 1)" == *"v0.1"* ]]; then
-        info "Neovim is already installed and modern enough."
-        return
+    local min_major=0 min_minor=10
+    if command -v nvim >/dev/null 2>&1; then
+        local ver
+        ver="$(nvim --version | head -n 1 | grep -oP '\d+\.\d+\.\d+')"
+        local maj min
+        IFS='.' read -r maj min _ <<< "$ver"
+        if (( maj > min_major || (maj == min_major && min >= min_minor) )); then
+            info "Neovim $ver is already installed and modern enough."
+            return
+        fi
+        warn "Neovim $ver is too old (need >= $min_major.$min_minor). Reinstalling..."
     fi
 
+    # Pick the correct tarball for the current architecture
+    local tarball
+    case "$ARCH" in
+        x86_64)  tarball="nvim-linux-x86_64.tar.gz" ;;
+        aarch64) tarball="nvim-linux-arm64.tar.gz"  ;;
+        *) error "Unsupported architecture: $ARCH" ;;
+    esac
+
     info "Installing Neovim (latest stable) to /opt/nvim..."
-    wget -q https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+    wget -q "https://github.com/neovim/neovim/releases/latest/download/$tarball"
     sudo rm -rf /opt/nvim
     sudo mkdir -p /opt/nvim
-    sudo tar -xzf nvim-linux-x86_64.tar.gz -C /opt/nvim --strip-components=1
-    rm nvim-linux-x86_64.tar.gz
-    
-    # Ensure it's in the PATH (user might need to restart shell or we add it to .bashrc)
+    sudo tar -xzf "$tarball" -C /opt/nvim --strip-components=1
+    rm "$tarball"
+
     if [[ ":$PATH:" != *":/opt/nvim/bin:"* ]]; then
         warn "/opt/nvim/bin is not in your PATH. Adding it to .bashrc in the next step."
     fi
@@ -98,11 +141,12 @@ setup_configs() {
 
 # --- Main ---
 main() {
+    detect_env
     install_dependencies
     install_neovim
     install_oh_my_bash
     setup_configs
-    
+
     info "Installation complete! Please restart your terminal."
 }
 

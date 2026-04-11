@@ -1,6 +1,10 @@
-export TERM=wezterm
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
+
+# Only set TERM to wezterm when actually running inside WezTerm
+if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
+  export TERM=wezterm
+fi
 
 # Path to your oh-my-bash installation.
 export OSH="$HOME/.oh-my-bash"
@@ -35,6 +39,26 @@ if [ -f "/opt/miniconda3/etc/profile.d/conda.sh" ]; then
     conda activate dev 2>/dev/null || true
 fi
 
+# ── NVIDIA / CUDA ─────────────────────────────────────────────────────────────
+# Resolve the active CUDA installation (prefers versioned symlink target)
+_cuda_dir=""
+if [ -d "/usr/local/cuda" ]; then
+    _cuda_dir="/usr/local/cuda"
+elif ls /usr/local/cuda-* 2>/dev/null | head -1 | grep -q .; then
+    _cuda_dir="$(ls -d /usr/local/cuda-* 2>/dev/null | sort -V | tail -1)"
+fi
+
+if [ -n "$_cuda_dir" ]; then
+    export CUDA_HOME="$_cuda_dir"
+    export PATH="$PATH:$CUDA_HOME/bin"
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CUDA_HOME/lib64"
+fi
+unset _cuda_dir
+
 # ── Editor ────────────────────────────────────────────────────────────────────
 export EDITOR='nvim'
 export VISUAL='nvim'
+
+# ── GPU aliases ───────────────────────────────────────────────────────────────
+alias gpu='watch -n1 nvidia-smi'
+alias gpustat='nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,utilization.memory,memory.used,memory.total --format=csv,noheader,nounits'
