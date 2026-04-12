@@ -15,11 +15,9 @@ error() { printf "\033[31;1m[ERROR]\033[0m %s\n" "$1"; exit 1; }
 detect_env() {
     ARCH="$(uname -m)"
     OS_ID=""
-    OS_ID_LIKE=""
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS_ID="${ID:-}"
-        OS_ID_LIKE="${ID_LIKE:-}"
     fi
     IS_POPOS=false
     [[ "$OS_ID" == "pop" ]] && IS_POPOS=true
@@ -38,60 +36,59 @@ install_dependencies() {
         "ripgrep" "fd-find"
         "python3" "python3-venv" "python3-dev" "python3-pip"
         "wget" "ca-certificates"
+        "luarocks" "lua5.1" "liblua5.1-dev"
+        "imagemagick"
+        "ffmpeg" "cmus" "yt-dlp" "mpv"
     )
 
-    # Only add npm if not already installed
-    if ! command -v npm >/dev/null; then
-        pkgs+=("npm")
-    fi
-
-    # PopOS / NVIDIA extras
-    if $IS_POPOS; then
-        info "PopOS detected — adding GPU monitoring tools..."
-        pkgs+=("nvtop")
-    fi
+    # Monitoring tools
+    pkgs+=("btop" "htop" "nvtop" "xfce4-taskmanager" "xfce4-cpugraph-plugin" "xfce4-diskperf-plugin" "xfce4-netload-plugin" "xfce4-sensors-plugin" "xfce4-systemload-plugin")
 
     sudo apt-get install -y "${pkgs[@]}"
 
-    # Symlink fdfind to fd if it's the debian package version
+    # Symlink fdfind -> fd if on Debian/Ubuntu
     if command -v fdfind >/dev/null && ! command -v fd >/dev/null; then
         sudo ln -sf /usr/bin/fdfind /usr/local/bin/fd
     fi
 }
 
-# --- Neovim Installation ---
-install_neovim() {
-    local min_major=0 min_minor=10
-    if command -v nvim >/dev/null 2>&1; then
-        local ver
-        ver="$(nvim --version | head -n 1 | grep -oP '\d+\.\d+\.\d+')"
-        local maj min
-        IFS='.' read -r maj min _ <<< "$ver"
-        if (( maj > min_major || (maj == min_major && min >= min_minor) )); then
-            info "Neovim $ver is already installed and modern enough."
-            return
-        fi
-        warn "Neovim $ver is too old (need >= $min_major.$min_minor). Reinstalling..."
+# --- Install Utilities ---
+install_utilities() {
+    info "Installing utility scripts..."
+    sudo cp "$DOTFILES_DIR/scripts/kb-layout.sh" /usr/local/bin/kb-layout
+    sudo chmod +x /usr/local/bin/kb-layout
+}
+
+# --- Mise Installation ---
+install_mise() {
+    if command -v mise >/dev/null 2>&1; then
+        info "mise $(mise --version) is already installed."
+        return
     fi
 
-    # Pick the correct tarball for the current architecture
-    local tarball
-    case "$ARCH" in
-        x86_64)  tarball="nvim-linux-x86_64.tar.gz" ;;
-        aarch64) tarball="nvim-linux-arm64.tar.gz"  ;;
-        *) error "Unsupported architecture: $ARCH" ;;
-    esac
+    info "Installing mise..."
+    curl -fsSL https://mise.run | sh
+}
 
-    info "Installing Neovim (latest stable) to /opt/nvim..."
-    wget -q "https://github.com/neovim/neovim/releases/latest/download/$tarball"
-    sudo rm -rf /opt/nvim
-    sudo mkdir -p /opt/nvim
-    sudo tar -xzf "$tarball" -C /opt/nvim --strip-components=1
-    rm "$tarball"
+# --- Mise-managed Tools (go, node, neovim, lazygit) ---
+install_mise_tools() {
+    # Activate mise for this script session
+    export PATH="$HOME/.local/bin:$PATH"
+    eval "$(mise activate bash --shims)"
 
-    if [[ ":$PATH:" != *":/opt/nvim/bin:"* ]]; then
-        warn "/opt/nvim/bin is not in your PATH. Adding it to .bashrc in the next step."
-    fi
+    info "Installing mise tools from mise.toml..."
+    mise install --yes
+
+    # npm globals needed by neovim plugins
+    info "Installing npm global packages..."
+    mise exec node -- npm install -g neovim tree-sitter-cli @mermaid-js/mermaid-cli
+}
+
+# --- Go Tools (gopls, gofumpt) ---
+install_go_tools() {
+    info "Installing Go tools (gopls, gofumpt)..."
+    mise exec go -- go install golang.org/x/tools/gopls@latest
+    mise exec go -- go install mvdan.cc/gofumpt@latest
 }
 
 # --- Oh-My-Bash Installation ---
@@ -103,7 +100,6 @@ install_oh_my_bash() {
         info "Oh-My-Bash is already installed."
     fi
 
-    # Copy the custom 'rana' theme
     info "Setting up 'rana' theme..."
     mkdir -p "$HOME/.oh-my-bash/themes/rana"
     cp -r "$DOTFILES_DIR/bash/themes/rana/"* "$HOME/.oh-my-bash/themes/rana/"
@@ -120,6 +116,13 @@ setup_configs() {
     fi
     mkdir -p "$HOME/.config"
     ln -sf "$DOTFILES_DIR/nvim" "$HOME/.config/nvim"
+
+    # Mise global config
+    mkdir -p "$HOME/.config/mise"
+    if [ -f "$HOME/.config/mise/config.toml" ]; then
+        cp "$HOME/.config/mise/config.toml" "$BACKUP_DIR/mise-config.toml"
+    fi
+    ln -sf "$DOTFILES_DIR/mise.toml" "$HOME/.config/mise/config.toml"
 
     # Bash
     if [ -f "$HOME/.bashrc" ]; then
@@ -141,11 +144,18 @@ setup_configs() {
 
 # --- Main ---
 main() {
+    if [ "$(id -u)" -eq 0 ] && [ -z "$SUDO_USER" ]; then
+        error "Do not run this script as root. Run as your normal user — sudo is used internally where needed."
+    fi
+
     detect_env
     install_dependencies
-    install_neovim
-    install_oh_my_bash
+    install_utilities
+    install_mise
     setup_configs
+    install_mise_tools
+    install_go_tools
+    install_oh_my_bash
 
     info "Installation complete! Please restart your terminal."
 }

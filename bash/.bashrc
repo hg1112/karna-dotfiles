@@ -33,6 +33,16 @@ if [ -x "$HOME/.local/bin/mise" ]; then
   eval "$($HOME/.local/bin/mise activate bash)"
 fi
 
+# ── Java ──────────────────────────────────────────────────────────────────────
+# Resolve JAVA_HOME from mise-managed installation (java = "latest" in ~/.config/mise/config.toml)
+# mise activate (above) must run first so `mise which java` works
+_java_bin="$(mise which java 2>/dev/null)"
+if [ -n "$_java_bin" ]; then
+  export JAVA_HOME="$(dirname "$(dirname "$_java_bin")")"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+unset _java_bin
+
 # ── Conda / Miniconda ─────────────────────────────────────────────────────────
 if [ -f "/opt/miniconda3/etc/profile.d/conda.sh" ]; then
     . "/opt/miniconda3/etc/profile.d/conda.sh"
@@ -62,3 +72,8 @@ export VISUAL='nvim'
 # ── GPU aliases ───────────────────────────────────────────────────────────────
 alias gpu='watch -n1 nvidia-smi'
 alias gpustat='nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,utilization.memory,memory.used,memory.total --format=csv,noheader,nounits'
+
+# ── Music Setup ───────────────────────────────────────────────────────────────
+if [ -f "$HOME/karna-dotfiles/bash/music.sh" ]; then
+    source "$HOME/karna-dotfiles/bash/music.sh"
+fi

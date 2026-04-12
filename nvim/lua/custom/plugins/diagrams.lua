@@ -28,7 +28,7 @@ return {
     opts = {
       renderer_options = {
         mermaid = {
-          args = { "-p", vim.fn.expand("~/.config/nvim/puppeteer-config.json") },
+          cli_args = { "-p", vim.fn.expand("~/.config/nvim/puppeteer-config.json") },
           background = "transparent",
           theme = "dark",
         }

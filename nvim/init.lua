@@ -85,6 +85,15 @@ P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
 -- Set <space> as the leader key
+-- ── Java: propagate JAVA_HOME into Neovim's PATH ─────────────────────────────
+-- ~/.bashrc sets JAVA_HOME via mise. When Neovim is opened from the terminal
+-- JAVA_HOME is inherited. We prepend $JAVA_HOME/bin so mason's jdtls Python
+-- wrapper can find the `java` executable without any hardcoded paths.
+local java_home = vim.env.JAVA_HOME
+if java_home then
+  vim.env.PATH = java_home .. '/bin:' .. vim.env.PATH
+end
+
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
 vim.g.mapleader = ' '
@@ -189,7 +198,7 @@ vim.diagnostic.config {
   virtual_lines = false, -- Text shows up underneath the line, with virtual lines
 
   -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
-  jump = { float = true },
+  jump = { on_jump = function() vim.diagnostic.open_float() end },
 }
 
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
@@ -618,7 +627,7 @@ require('lazy').setup({
         pyright = {}, -- Python
         rust_analyzer = {}, -- Rust
         ts_ls = {}, -- JavaScript / TypeScript
-        jdtls = {}, -- Java
+        jdtls = {}, -- Java (requires JAVA_HOME set in ~/.bashrc)
         marksman = {}, -- Markdown
 
         stylua = {}, -- Used to format Lua code
@@ -984,6 +993,7 @@ require('lazy').setup({
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
 }, { ---@diagnostic disable-line: missing-fields
+  rocks = { hererocks = false },
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
     -- default lazy.nvim defined Nerd Font icons, otherwise define a unicode icons table
