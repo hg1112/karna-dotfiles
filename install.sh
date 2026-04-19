@@ -92,6 +92,57 @@ install_go_tools() {
     mise exec go -- go install mvdan.cc/gofumpt@latest
 }
 
+# --- Kitty Terminal ---
+install_kitty() {
+    info "Installing kitty terminal..."
+    curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n
+
+    # Symlink into PATH
+    ln -sf "$HOME/.local/kitty.app/bin/kitty" "$HOME/.local/bin/kitty"
+    ln -sf "$HOME/.local/kitty.app/bin/kitten" "$HOME/.local/bin/kitten"
+
+    # Desktop entry
+    cp "$HOME/.local/kitty.app/share/applications/kitty.desktop" "$HOME/.local/share/applications/"
+    sed -i "s|Icon=kitty|Icon=$HOME/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" \
+        "$HOME/.local/share/applications/kitty.desktop"
+
+    # Set as default terminal emulator
+    sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator \
+        "$HOME/.local/kitty.app/bin/kitty" 50
+    sudo update-alternatives --set x-terminal-emulator "$HOME/.local/kitty.app/bin/kitty"
+
+    info "kitty installed and set as default terminal."
+}
+
+# --- i3 Window Manager ---
+install_i3() {
+    info "Installing i3 and companion tools..."
+
+    local pkgs=(
+        "i3-wm" "i3status" "rofi" "picom" "dunst"
+        "feh" "xss-lock" "i3lock" "network-manager-gnome" "xfce4-screenshooter"
+        "arandr"
+    )
+    sudo apt-get install -y "${pkgs[@]}"
+
+    if [ ! -f /usr/share/xsessions/i3.desktop ]; then
+        info "Creating /usr/share/xsessions/i3.desktop..."
+        sudo tee /usr/share/xsessions/i3.desktop > /dev/null <<'EOF'
+[Desktop Entry]
+Name=i3
+Comment=Improved tiling window manager
+Exec=i3
+TryExec=i3
+Type=Application
+X-LightDM-DesktopName=i3
+DesktopNames=i3
+Keywords=tiling;wm;windowmanager;window;manager;
+EOF
+    fi
+
+    info "i3 installation complete."
+}
+
 # --- Oh-My-Bash Installation ---
 install_oh_my_bash() {
     if [ ! -d "$HOME/.oh-my-bash" ]; then
@@ -145,6 +196,24 @@ setup_configs() {
     # Paths
     mkdir -p "$HOME/.config/karna"
     ln -sf "$DOTFILES_DIR/bash/paths.sh" "$HOME/.config/karna/paths.sh"
+
+    # i3
+    if [ -d "$HOME/.config/i3" ] && [ ! -L "$HOME/.config/i3" ]; then
+        mv "$HOME/.config/i3" "$BACKUP_DIR/i3"
+    fi
+    ln -sf "$DOTFILES_DIR/i3" "$HOME/.config/i3"
+
+    # i3status
+    mkdir -p "$HOME/.config/i3status"
+    if [ -f "$HOME/.config/i3status/config" ] && [ ! -L "$HOME/.config/i3status/config" ]; then
+        cp "$HOME/.config/i3status/config" "$BACKUP_DIR/i3status-config"
+    fi
+    ln -sf "$DOTFILES_DIR/i3/i3status.conf" "$HOME/.config/i3status/config"
+
+    # Scripts
+    mkdir -p "$HOME/.local/bin"
+    chmod +x "$DOTFILES_DIR/scripts/monitor-setup.sh"
+    ln -sf "$DOTFILES_DIR/scripts/monitor-setup.sh" "$HOME/.local/bin/monitor-setup"
 }
 
 # --- Main ---
@@ -155,12 +224,14 @@ main() {
 
     detect_env
     install_dependencies
+    install_i3
     #install_utilities
     install_mise
     setup_configs
     install_mise_tools
     install_go_tools
     install_oh_my_bash
+    install_kitty
 
     info "Installation complete! Please restart your terminal."
 }
