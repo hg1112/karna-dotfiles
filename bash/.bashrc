@@ -20,50 +20,8 @@ if [ -f "$OSH/oh-my-bash.sh" ]; then
   source "$OSH/oh-my-bash.sh"
 fi
 
-# ── PATH ──────────────────────────────────────────────────────────────────────
-export PATH="$PATH:/opt/nvim/bin"
-export PATH="$PATH:$HOME/go/bin"
-export PATH="$PATH:$HOME/.local/bin"
-
-# Rust/Cargo
-[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
-
-# mise (conditional activation)
-if [ -x "$HOME/.local/bin/mise" ]; then
-  eval "$($HOME/.local/bin/mise activate bash)"
-fi
-
-# ── Java ──────────────────────────────────────────────────────────────────────
-# Resolve JAVA_HOME from mise-managed installation (java = "latest" in ~/.config/mise/config.toml)
-# mise activate (above) must run first so `mise which java` works
-_java_bin="$(mise which java 2>/dev/null)"
-if [ -n "$_java_bin" ]; then
-  export JAVA_HOME="$(dirname "$(dirname "$_java_bin")")"
-  export PATH="$JAVA_HOME/bin:$PATH"
-fi
-unset _java_bin
-
-# ── Conda / Miniconda ─────────────────────────────────────────────────────────
-if [ -f "/opt/miniconda3/etc/profile.d/conda.sh" ]; then
-    . "/opt/miniconda3/etc/profile.d/conda.sh"
-    conda activate dev 2>/dev/null || true
-fi
-
-# ── NVIDIA / CUDA ─────────────────────────────────────────────────────────────
-# Resolve the active CUDA installation (prefers versioned symlink target)
-_cuda_dir=""
-if [ -d "/usr/local/cuda" ]; then
-    _cuda_dir="/usr/local/cuda"
-elif ls /usr/local/cuda-* 2>/dev/null | head -1 | grep -q .; then
-    _cuda_dir="$(ls -d /usr/local/cuda-* 2>/dev/null | sort -V | tail -1)"
-fi
-
-if [ -n "$_cuda_dir" ]; then
-    export CUDA_HOME="$_cuda_dir"
-    export PATH="$PATH:$CUDA_HOME/bin"
-    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$CUDA_HOME/lib64"
-fi
-unset _cuda_dir
+# ── Paths & Tools ─────────────────────────────────────────────────────────────
+[ -f "$HOME/.config/karna/paths.sh" ] && . "$HOME/.config/karna/paths.sh"
 
 # ── Editor ────────────────────────────────────────────────────────────────────
 export EDITOR='nvim'
@@ -74,6 +32,6 @@ alias gpu='watch -n1 nvidia-smi'
 alias gpustat='nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,utilization.memory,memory.used,memory.total --format=csv,noheader,nounits'
 
 # ── Music Setup ───────────────────────────────────────────────────────────────
-if [ -f "$HOME/karna-dotfiles/bash/music.sh" ]; then
-    source "$HOME/karna-dotfiles/bash/music.sh"
+if [ -f "$HOME/Desktop/karna-dotfiles/bash/music.sh" ]; then
+    source "$HOME/Desktop/karna-dotfiles/bash/music.sh"
 fi

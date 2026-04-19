@@ -39,6 +39,7 @@ install_dependencies() {
         "luarocks" "lua5.1" "liblua5.1-dev"
         "imagemagick"
         "ffmpeg" "cmus" "yt-dlp" "mpv"
+        "libspa-0.2-bluetooth"
     )
 
     # Monitoring tools
@@ -53,11 +54,11 @@ install_dependencies() {
 }
 
 # --- Install Utilities ---
-install_utilities() {
-    info "Installing utility scripts..."
-    sudo cp "$DOTFILES_DIR/scripts/kb-layout.sh" /usr/local/bin/kb-layout
-    sudo chmod +x /usr/local/bin/kb-layout
-}
+#install_utilities() {
+    #info "Installing utility scripts..."
+    #sudo cp "$DOTFILES_DIR/scripts/kb-layout.sh" /usr/local/bin/kb-layout
+    #sudo chmod +x /usr/local/bin/kb-layout
+#}
 
 # --- Mise Installation ---
 install_mise() {
@@ -140,6 +141,10 @@ setup_configs() {
         cp "$HOME/.gitconfig" "$BACKUP_DIR/.gitconfig"
     fi
     ln -sf "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+
+    # Paths
+    mkdir -p "$HOME/.config/karna"
+    ln -sf "$DOTFILES_DIR/bash/paths.sh" "$HOME/.config/karna/paths.sh"
 }
 
 # --- Main ---
@@ -150,7 +155,7 @@ main() {
 
     detect_env
     install_dependencies
-    install_utilities
+    #install_utilities
     install_mise
     setup_configs
     install_mise_tools
