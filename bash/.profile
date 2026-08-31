@@ -8,4 +8,10 @@ if [ "$BASH" ]; then
     . ~/.bashrc
   fi
 fi
-. "$HOME/.cargo/env"
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+fi
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/karna/.local/bin:$PATH"

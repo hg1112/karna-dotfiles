@@ -18,8 +18,9 @@ exec --no-startup-id picom --daemon
 exec --no-startup-id dunst
 exec --no-startup-id feh --bg-scale ~/Pictures/wallpaper.jpg
 exec --no-startup-id nm-applet
-exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
+exec --no-startup-id xss-lock --transfer-sleep-lock -- lock
 exec --no-startup-id xfce4-power-manager
+exec --no-startup-id xset s off -dpms
 exec --no-startup-id thunar --daemon
 
 # ─── Essentials ───────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ bindsym $mod+Shift+q kill
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 bindsym $mod+Shift+e exec --no-startup-id "i3-nagbar -t warning -m 'Exit i3?' -B 'Yes, exit i3' 'i3-msg exit'"
+bindsym $mod+ctrl+l exec --no-startup-id lock
 
 # ─── Focus ────────────────────────────────────────────────────────────────────
 bindsym $mod+h     focus left

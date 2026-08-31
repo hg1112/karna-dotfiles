@@ -114,6 +114,31 @@ install_kitty() {
     info "kitty installed and set as default terminal."
 }
 
+# --- i3lock-color ---
+install_i3lock_color() {
+    if command -v i3lock-color >/dev/null 2>&1; then
+        info "i3lock-color already installed."; return
+    fi
+
+    info "Installing i3lock-color build dependencies..."
+    sudo apt-get install -y autoconf gcc make pkg-config \
+        libpam0g-dev libcairo2-dev libfontconfig1-dev \
+        libxcb-composite0-dev libev-dev libx11-xcb-dev \
+        libxcb-xkb-dev libxcb-xinerama0-dev libxcb-randr0-dev \
+        libxcb-image0-dev libxcb-util0-dev libxcb-xrm-dev \
+        libxkbcommon-dev libxkbcommon-x11-dev libjpeg-dev
+
+    info "Building i3lock-color..."
+    local tmp
+    tmp="$(mktemp -d)"
+    git clone https://github.com/Raymo111/i3lock-color "$tmp/i3lock-color"
+    cd "$tmp/i3lock-color"
+    ./install-i3lock-color.sh
+    cd - > /dev/null
+    rm -rf "$tmp"
+    info "i3lock-color installed."
+}
+
 # --- i3 Window Manager ---
 install_i3() {
     info "Installing i3 and companion tools..."
@@ -141,6 +166,16 @@ EOF
     fi
 
     info "i3 installation complete."
+}
+
+# --- Zed Editor ---
+install_zed() {
+    if command -v zed >/dev/null 2>&1; then
+        info "Zed is already installed."; return
+    fi
+
+    info "Installing Zed editor..."
+    curl -f https://zed.dev/install.sh | sh
 }
 
 # --- Oh-My-Bash Installation ---
@@ -210,10 +245,22 @@ setup_configs() {
     fi
     ln -sf "$DOTFILES_DIR/i3/i3status.conf" "$HOME/.config/i3status/config"
 
+    # WirePlumber (auto-switch to G435 when USB receiver plugged in)
+    mkdir -p "$HOME/.config/wireplumber/main.lua.d"
+    ln -sf "$DOTFILES_DIR/wireplumber/main.lua.d/51-g435-priority.lua" \
+        "$HOME/.config/wireplumber/main.lua.d/51-g435-priority.lua"
+
     # Scripts
     mkdir -p "$HOME/.local/bin"
     chmod +x "$DOTFILES_DIR/scripts/monitor-setup.sh"
+    chmod +x "$DOTFILES_DIR/scripts/display-hotplug.sh"
+    chmod +x "$DOTFILES_DIR/scripts/lock.sh"
     ln -sf "$DOTFILES_DIR/scripts/monitor-setup.sh" "$HOME/.local/bin/monitor-setup"
+    ln -sf "$DOTFILES_DIR/scripts/lock.sh" "$HOME/.local/bin/lock"
+    sudo cp "$DOTFILES_DIR/scripts/display-hotplug.sh" /usr/local/bin/display-hotplug
+    sudo chmod +x /usr/local/bin/display-hotplug
+    sudo cp "$DOTFILES_DIR/scripts/99-display-hotplug.rules" /etc/udev/rules.d/99-display-hotplug.rules
+    sudo udevadm control --reload-rules
 }
 
 # --- Main ---
@@ -224,14 +271,17 @@ main() {
 
     detect_env
     install_dependencies
+    install_i3lock_color
     install_i3
     #install_utilities
     install_mise
     setup_configs
+    systemctl --user restart wireplumber 2>/dev/null || true
     install_mise_tools
     install_go_tools
     install_oh_my_bash
     install_kitty
+    install_zed
 
     info "Installation complete! Please restart your terminal."
 }
